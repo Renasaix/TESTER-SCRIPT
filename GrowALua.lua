@@ -1,56 +1,37 @@
--- [[ FAKE HATCHER PROTOTYPE ]]
--- Put this in StarterPlayerScripts (LocalScript)
+--[[ CLIENT-SIDE FAKE HATCHER WITH MODELS ]]
+-- Place in StarterPlayerScripts (LocalScript)
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local player = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
 
--- === Placeholder petTable (will use PetEggs later) ===
+local player = Players.LocalPlayer
+local PetsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Models"):WaitForChild("Pets")
+
+-- === PetEggs / PetList mapping ===
 local petTable = {
     ["Common Egg"] = { "Dog", "Bunny", "Golden Lab" },
     ["Uncommon Egg"] = { "Chicken", "Black Bunny", "Cat", "Deer" },
-    ["Rare Egg"] = { "Pig", "Monkey", "Rooster" },
-    ["Legendary Egg"] = { "Cow", "Polar Bear", "Turtle" },
-    ["Mythical Egg"] = { "Squirrel", "Red Giant Ant" },
-    ["Rare Summer Egg"] = { "Flamingo", "Toucan", "Sea Turtle", "Orangutan" },
+    ["Rare Egg"] = { "Pig", "Monkey", "Rooster", "Orange Tabby", "Spotted Deer" },
+    ["Legendary Egg"] = { "Cow", "Polar Bear", "Sea Otter", "Turtle", "Silver Monkey" },
+    ["Mythical Egg"] = { "Grey Mouse", "Brown Mouse", "Squirrel", "Red Giant Ant", "Red Fox" },
+    ["Bug Egg"] = { "Snail", "Caterpillar", "Giant Ant", "Praying Mantis", "Dragonfly" },
+    ["Night Egg"] = { "Frog", "Hedgehog", "Mole", "Echo Frog", "Night Owl", "Raccoon" },
+    ["Bee Egg"] = { "Bee", "Honey Bee", "Bear Bee", "Petal Bee", "Queen Bee" },
+    ["Anti Bee Egg"] = { "Wasp", "Moth", "Tarantula Hawk", "Butterfly", "Disco Bee" },
+    ["Rare Summer Egg"] = { "Flamingo", "Toucan", "Sea Turtle", "Orangutan", "Seal" },
+    ["Oasis Egg"] = { "Meerkat", "Sand Snake", "Axolotl", "Hyacinth Macaw", "Fennec Fox" },
+    ["Paradise Egg"] = { "Ostrich", "Peacock", "Capybara", "Mimic Octopus" },
+    ["Dinosaur Egg"] = { "Raptor", "Triceratops", "Stegosaurus", "Pterodactyl", "Brontosaurus", "T-rex" },
+    ["Primal Egg"] = { "Parasaurolophus", "Iguanodon", "Pachycephalosaurus", "Dilophosaurus", "Ankylosaurus", "Spinosaurus" },
+    ["Zen Egg"] = { "Shiba Inu", "Nihonzaru", "Tanuki", "Tanchozuru", "Kappa", "Kitsune" },
+    ["Gourmet Egg"] = { "Bagel Bunny", "Pancake Mole", "Sushi Bear", "Spaghetti Sloth", "French Fry Ferret" },
 }
 
--- Stores the chosen pet per egg model
 local chosenPets = {}
 
--- === Simple GUI Setup ===
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
-screenGui.Name = "FakeHatcherGUI"
-
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 250, 0, 200)
-frame.Position = UDim2.new(0.02, 0, 0.3, 0)
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.BorderSizePixel = 0
-
-local eggLabel = Instance.new("TextLabel", frame)
-eggLabel.Size = UDim2.new(1, 0, 0, 30)
-eggLabel.Text = "Select an egg..."
-eggLabel.BackgroundTransparency = 1
-eggLabel.TextColor3 = Color3.new(1, 1, 1)
-eggLabel.TextScaled = true
-
-local petDropdown = Instance.new("TextButton", frame)
-petDropdown.Size = UDim2.new(1, 0, 0, 30)
-petDropdown.Position = UDim2.new(0, 0, 0, 40)
-petDropdown.Text = "Choose Pet"
-petDropdown.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-petDropdown.TextColor3 = Color3.new(1, 1, 1)
-
-local rerollButton = Instance.new("TextButton", frame)
-rerollButton.Size = UDim2.new(1, 0, 0, 30)
-rerollButton.Position = UDim2.new(0, 0, 0, 80)
-rerollButton.Text = "Reroll Egg"
-rerollButton.BackgroundColor3 = Color3.fromRGB(70, 40, 40)
-rerollButton.TextColor3 = Color3.new(1, 1, 1)
-
--- === Egg detection ===
+-- 🔍 Find eggs near player
 local function getNearbyEggs(radius)
     local eggs = {}
     local char = player.Character or player.CharacterAdded:Wait()
@@ -62,7 +43,7 @@ local function getNearbyEggs(radius)
             local base = obj:FindFirstChildWhichIsA("BasePart")
             if base then
                 local dist = (base.Position - root.Position).Magnitude
-                if dist <= (radius or 60) then
+                if dist <= (radius or 50) then
                     table.insert(eggs, obj)
                 end
             end
@@ -71,55 +52,52 @@ local function getNearbyEggs(radius)
     return eggs
 end
 
--- === Fake Hatch Override ===
-local function overridePetModel(eggModel, petName)
-    -- Placeholder: replace with actual PetList models
-    local display = Instance.new("BillboardGui")
-    display.Size = UDim2.new(0, 200, 0, 50)
-    display.AlwaysOnTop = true
-    display.StudsOffset = Vector3.new(0, 4, 0)
-    display.Parent = eggModel:FindFirstChildWhichIsA("BasePart")
+-- 🥚 Fake hatch: spawn pet model
+local function spawnPetFromEgg(eggModel, petName)
+    local basePart = eggModel:FindFirstChildWhichIsA("BasePart")
+    if not basePart then return end
 
-    local text = Instance.new("TextLabel", display)
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.Text = "Hatched: " .. petName
-    text.TextColor3 = Color3.fromRGB(255, 255, 0)
-    text.TextScaled = true
+    local petModel = PetsFolder:FindFirstChild(petName)
+    if not petModel then
+        warn("Pet model not found:", petName)
+        return
+    end
+
+    local clone = petModel:Clone()
+    clone.Parent = Workspace
+    clone:SetPrimaryPartCFrame(basePart.CFrame + Vector3.new(0, 3, 0))
+
+    -- Simple pop-out animation
+    local primary = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart")
+    if primary then
+        primary.Size = primary.Size * 0.1
+        TweenService:Create(primary, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {Size = primary.Size * 10}):Play()
+    end
 end
 
--- === GUI Handlers ===
-local selectedEgg = nil
-
-petDropdown.MouseButton1Click:Connect(function()
-    if not selectedEgg then return end
-    local pets = petTable[selectedEgg.Name]
-    if not pets then return end
-
-    -- Cycle through pets for now
-    local current = chosenPets[selectedEgg] or pets[1]
-    local index = table.find(pets, current) or 1
-    index = index + 1
-    if index > #pets then index = 1 end
-
-    chosenPets[selectedEgg] = pets[index]
-    petDropdown.Text = "Pet: " .. pets[index]
-end)
-
-rerollButton.MouseButton1Click:Connect(function()
-    local eggs = getNearbyEggs(60)
-    if #eggs > 0 then
-        selectedEgg = eggs[1] -- Take first egg in range
-        eggLabel.Text = "Egg: " .. selectedEgg.Name
-        local pets = petTable[selectedEgg.Name]
-        chosenPets[selectedEgg] = pets[math.random(1, #pets)]
-        petDropdown.Text = "Pet: " .. chosenPets[selectedEgg]
-
-        -- Apply fake hatch visual now
-        overridePetModel(selectedEgg, chosenPets[selectedEgg])
-    else
-        eggLabel.Text = "No eggs nearby"
+-- 📜 Monitor eggs hatching
+local function monitorEggs()
+    while true do
+        for _, egg in ipairs(getNearbyEggs(50)) do
+            local ready = egg:FindFirstChild("ReadyToHatch")
+            if ready and ready:IsA("BoolValue") and ready.Value == true then
+                local chosen = chosenPets[egg] or petTable[egg.Name][math.random(1, #petTable[egg.Name])]
+                spawnPetFromEgg(egg, chosen)
+                chosenPets[egg] = nil -- reset after hatching
+            end
+        end
+        task.wait(0.5)
     end
-end)
+end
 
-print("✅ Fake Hatcher Loaded - Reroll and pick pets in GUI")
+-- 🔄 Auto-assign pets to eggs nearby
+local function randomizeEggs()
+    for _, egg in ipairs(getNearbyEggs(50)) do
+        chosenPets[egg] = petTable[egg.Name][math.random(1, #petTable[egg.Name])]
+    end
+end
+
+randomizeEggs()
+task.spawn(monitorEggs)
+
+print("✅ Fake Hatcher with models loaded")
