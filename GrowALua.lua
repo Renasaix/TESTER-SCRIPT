@@ -1,4 +1,4 @@
---[[ CLIENT-SIDE FAKE HATCHER WITH MODELS ]]
+--[[ FAKE HATCHER WITH ANIMATION HOOK + GUI ]]
 -- Place in StarterPlayerScripts (LocalScript)
 
 local Players = game:GetService("Players")
@@ -30,6 +30,31 @@ local petTable = {
 }
 
 local chosenPets = {}
+
+-- 🎨 GUI Setup
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "FakeHatcherGUI"
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0, 20, 0.7, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundTransparency = 0.2
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "🐣 Fake Hatcher"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextScaled = true
+
+local statusLabel = Instance.new("TextLabel", frame)
+statusLabel.Position = UDim2.new(0, 0, 0, 40)
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Waiting for eggs..."
+statusLabel.TextColor3 = Color3.new(1, 1, 1)
+statusLabel.TextScaled = true
 
 -- 🔍 Find eggs near player
 local function getNearbyEggs(radius)
@@ -67,37 +92,41 @@ local function spawnPetFromEgg(eggModel, petName)
     clone.Parent = Workspace
     clone:SetPrimaryPartCFrame(basePart.CFrame + Vector3.new(0, 3, 0))
 
-    -- Simple pop-out animation
+    -- Pop-out animation
     local primary = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart")
     if primary then
-        primary.Size = primary.Size * 0.1
-        TweenService:Create(primary, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {Size = primary.Size * 10}):Play()
+        local originalSize = primary.Size
+        primary.Size = originalSize * 0.1
+        TweenService:Create(primary, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {Size = originalSize}):Play()
     end
+
+    statusLabel.Text = "Hatched: " .. petName
 end
 
--- 📜 Monitor eggs hatching
-local function monitorEggs()
+-- 🎥 Hook into egg cracking animation
+local function hookEggAnimations(eggModel)
+    if chosenPets[eggModel] then return end
+    chosenPets[eggModel] = petTable[eggModel.Name][math.random(1, #petTable[eggModel.Name])]
+
+    eggModel.DescendantAdded:Connect(function(desc)
+        if desc:IsA("AnimationTrack") then
+            local chosenPet = chosenPets[eggModel]
+            spawnPetFromEgg(eggModel, chosenPet)
+        end
+    end)
+end
+
+-- 🔄 Auto-scan eggs nearby and hook them
+local function scanEggs()
     while true do
-        for _, egg in ipairs(getNearbyEggs(50)) do
-            local ready = egg:FindFirstChild("ReadyToHatch")
-            if ready and ready:IsA("BoolValue") and ready.Value == true then
-                local chosen = chosenPets[egg] or petTable[egg.Name][math.random(1, #petTable[egg.Name])]
-                spawnPetFromEgg(egg, chosen)
-                chosenPets[egg] = nil -- reset after hatching
+        for _, egg in ipairs(getNearbyEggs(60)) do
+            if not chosenPets[egg] then
+                hookEggAnimations(egg)
             end
         end
-        task.wait(0.5)
+        task.wait(1)
     end
 end
 
--- 🔄 Auto-assign pets to eggs nearby
-local function randomizeEggs()
-    for _, egg in ipairs(getNearbyEggs(50)) do
-        chosenPets[egg] = petTable[egg.Name][math.random(1, #petTable[egg.Name])]
-    end
-end
-
-randomizeEggs()
-task.spawn(monitorEggs)
-
-print("✅ Fake Hatcher with models loaded")
+task.spawn(scanEggs)
+statusLabel.Text = "✅ Fake Hatcher Active"
