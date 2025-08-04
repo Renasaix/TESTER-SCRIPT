@@ -1,42 +1,52 @@
--- LocalScript (StarterPlayerScripts)
+-- LocalScript in StarterPlayerScripts
 
-local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
--- Folder where the pets spawn after hatching
-local petFolder = Workspace:WaitForChild("Pets")
+local SCALE = 4 -- how big pets get when enlarged
 
--- Size multiplier for huge effect
-local HUGE_SCALE = 4  -- change to how big you want it
-
--- Track new pets
-petFolder.ChildAdded:Connect(function(pet)
-    -- Wait a bit to make sure model is loaded
-    task.wait(0.2)
-
-    -- Only affect pets owned by you (if there's a tag)
-    if pet:FindFirstChild("Owner") and pet.Owner.Value ~= player.Name then return end
-
-    -- Clone the pet model
-    local hugePet = pet:Clone()
-    hugePet.Parent = pet.Parent
-
-    -- Scale it up
-    for _, part in ipairs(hugePet:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Size *= HUGE_SCALE
-        elseif part:IsA("SpecialMesh") then
-            part.Scale *= HUGE_SCALE
+-- Function to enlarge a model
+local function enlargePet(model)
+    for _, obj in ipairs(model:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Size *= SCALE
+        elseif obj:IsA("SpecialMesh") then
+            obj.Scale *= SCALE
         end
     end
+end
 
-    -- Position it at same spot as original
-    if pet.PrimaryPart then
-        hugePet:SetPrimaryPartCFrame(pet.PrimaryPart.CFrame)
+-- Function to enlarge all your pets
+local function enlargeAllPets()
+    for _, pet in ipairs(Workspace:GetDescendants()) do
+        if pet:IsA("Model") and pet:FindFirstChild("Owner") then
+            if pet.Owner.Value == player.Name then
+                enlargePet(pet)
+            end
+        end
     end
+end
 
-    -- Optional: Fade out after a few seconds
-    task.wait(3)
-    hugePet:Destroy()
+-- GUI Creation
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 100)
+Frame.Position = UDim2.new(0.4, 0, 0.4, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.Parent = ScreenGui
+
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(1, 0, 1, 0)
+Button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+Button.Text = "Enlarge"
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.Font = Enum.Font.GothamBold
+Button.TextScaled = true
+Button.Parent = Frame
+
+Button.MouseButton1Click:Connect(function()
+    enlargeAllPets()
 end)
