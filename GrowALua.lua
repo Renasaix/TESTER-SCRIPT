@@ -1,66 +1,79 @@
--- LocalScript in StarterPlayerScripts
+-- Client-side Fake Hatch + Model Swap Script for Grow a Garden
+-- Zen Egg hatching into Kitsune, but showing another pet model like Dragonfly
 
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local camera = workspace.CurrentCamera
 
-local SCALE = 4 -- how much bigger
-local scaledPets = {} -- to prevent re-scaling same pets
+-- SETTINGS --
+local eggName = "Zen Egg"
+local petModelToShow = "Dragonfly" -- This will appear instead of the real Kitsune
+local fakeHatchedPetName = "Kitsune"
 
--- Helper: Scales all parts in a model
-local function scaleModel(model)
-    if scaledPets[model] then return end
-    scaledPets[model] = true
-
-    for _, obj in ipairs(model:GetDescendants()) do
-        -- Resize BaseParts
-        if obj:IsA("BasePart") then
-            obj.Size *= SCALE
-            obj.CFrame = obj.CFrame * CFrame.new(0, obj.Size.Y / (2 * SCALE), 0)
-        end
-        -- Resize SpecialMeshes
-        if obj:IsA("SpecialMesh") then
-            obj.Scale *= SCALE
-        end
-        -- Resize MeshParts
-        if obj:IsA("MeshPart") then
-            obj.Size *= SCALE
+-- Locate Egg (visual)
+local function findZenEgg()
+    for _, egg in ipairs(workspace:GetDescendants()) do
+        if egg:IsA("Model") and egg.Name == eggName and egg:FindFirstChild("Egg Part") then
+            return egg
         end
     end
 end
 
--- Find and enlarge YOUR pets only
-local function enlargeMyPets()
-    for _, model in ipairs(Workspace:GetDescendants()) do
-        if model:IsA("Model") and model:FindFirstChild("Owner") then
-            local owner = model:FindFirstChild("Owner")
-            if owner:IsA("StringValue") and owner.Value == player.Name then
-                scaleModel(model)
-            end
-        end
+-- Load Pet Model (from ReplicatedStorage)
+local function loadPetModel(name)
+    local model = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Models"):FindFirstChild(name)
+    if model then
+        return model:Clone()
     end
 end
 
--- UI creation
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+-- Fake Hatch Animation + GUI
+local function playFakeHatch(eggModel)
+    local eggPart = eggModel:FindFirstChild("Egg Part")
+    if not eggPart then return end
 
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 100)
-Frame.Position = UDim2.new(0.4, 0, 0.4, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Frame.Parent = ScreenGui
-Frame.Name = "HugePetUI"
+    -- Crack effect (fake)
+    local crack = Instance.new("ParticleEmitter")
+    crack.Texture = "rbxassetid://13114446164" -- Crack texture
+    crack.Lifetime = NumberRange.new(0.5)
+    crack.Rate = 50
+    crack.Speed = NumberRange.new(0)
+    crack.Parent = eggPart
+    task.delay(1, function() crack:Destroy() end)
 
-local Button = Instance.new("TextButton")
-Button.Size = UDim2.new(1, 0, 1, 0)
-Button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-Button.Text = "Enlarge"
-Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button.Font = Enum.Font.GothamBold
-Button.TextScaled = true
-Button.Parent = Frame
+    -- Load & position fake pet model
+    local petModel = loadPetModel(petModelToShow)
+    if petModel then
+        petModel:SetPrimaryPartCFrame(eggPart.CFrame * CFrame.new(0, 3, 0))
+        petModel.Parent = workspace
 
-Button.MouseButton1Click:Connect(function()
-    enlargeMyPets()
-end)
+        -- Animation: jump up
+        local tween = TweenService:Create(petModel.PrimaryPart, TweenInfo.new(1, Enum.EasingStyle.Bounce), {CFrame = petModel.PrimaryPart.CFrame * CFrame.new(0, 5, 0)})
+        tween:Play()
+
+        -- Label pet name (Kitsune)
+        local billboard = Instance.new("BillboardGui", petModel.PrimaryPart)
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 4, 0)
+        billboard.AlwaysOnTop = true
+        local label = Instance.new("TextLabel", billboard)
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.Text = "You hatched: " .. fakeHatchedPetName .. "!"
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.TextStrokeTransparency = 0
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.FredokaOne
+        label.TextScaled = true
+    end
+end
+
+-- MAIN
+local egg = findZenEgg()
+if egg then
+    playFakeHatch(egg)
+else
+    warn("Zen Egg not found!")
+end
