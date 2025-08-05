@@ -1,96 +1,66 @@
+-- LocalScript in StarterPlayerScripts
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
-
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local petHolder = Workspace:FindFirstChild("Pets") or Workspace:FindFirstChild("PetHolder")
-if not petHolder then
-    warn("No Pets folder found in Workspace.")
-    return
-end
 
--- GUI SETUP
-local gui = Instance.new("ScreenGui")
-gui.Name = "FakeHatchUI"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+local SCALE = 4 -- how much bigger
+local scaledPets = {} -- to prevent re-scaling same pets
 
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 250, 0, 50)
-button.Position = UDim2.new(0.5, -125, 0.8, 0)
-button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.Text = "🐣 Fake Hatch Kitsune from Zen Egg"
-button.Font = Enum.Font.GothamBold
-button.TextSize = 16
-button.BorderSizePixel = 0
-button.AutoButtonColor = true
-button.Parent = gui
+-- Helper: Scales all parts in a model
+local function scaleModel(model)
+    if scaledPets[model] then return end
+    scaledPets[model] = true
 
--- Fake hatch logic
-local function fakeHatch()
-    local desiredEggName = "Zen Egg"
-    local desiredPetName = "Kitsune"
-
-    local petModels = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Models"):WaitForChild("Pets")
-    local eggModels = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Models"):WaitForChild("Eggs")
-
-    local targetEgg = eggModels:FindFirstChild(desiredEggName)
-    local targetPet = petModels:FindFirstChild(desiredPetName)
-
-    if not targetEgg or not targetPet then
-        warn("Missing egg or pet model:", desiredEggName, desiredPetName)
-        return
-    end
-
-    -- Spawn egg crack
-    local eggClone = targetEgg:Clone()
-    eggClone.Name = "FakeZenEgg"
-    eggClone.Parent = Workspace
-    eggClone:SetPrimaryPartCFrame(character.HumanoidRootPart.CFrame * CFrame.new(0, 2, -5))
-
-    -- Visual crack effect
-    if eggClone:FindFirstChild("Crack") then
-        eggClone.Crack.Transparency = 0
-        TweenService:Create(eggClone.Crack, TweenInfo.new(0.5), {Transparency = 1}):Play()
-    end
-
-    task.delay(2.5, function()
-        eggClone:Destroy()
-    end)
-
-    -- Remove current pet(s)
-    for _, pet in pairs(petHolder:GetChildren()) do
-        if pet:IsA("Model") and pet:FindFirstChild("Owner") and pet.Owner.Value == player then
-            pet:Destroy()
+    for _, obj in ipairs(model:GetDescendants()) do
+        -- Resize BaseParts
+        if obj:IsA("BasePart") then
+            obj.Size *= SCALE
+            obj.CFrame = obj.CFrame * CFrame.new(0, obj.Size.Y / (2 * SCALE), 0)
+        end
+        -- Resize SpecialMeshes
+        if obj:IsA("SpecialMesh") then
+            obj.Scale *= SCALE
+        end
+        -- Resize MeshParts
+        if obj:IsA("MeshPart") then
+            obj.Size *= SCALE
         end
     end
-
-    -- Spawn Kitsune
-    local newPet = targetPet:Clone()
-    newPet.Name = "Kitsune"
-    newPet.Parent = petHolder
-    if newPet:FindFirstChild("Owner") then
-        newPet.Owner.Value = player
-    end
-
-    newPet:SetPrimaryPartCFrame(character.HumanoidRootPart.CFrame * CFrame.new(2, 0, 2))
-
-    -- Optional animation
-    if newPet:FindFirstChild("Humanoid") and newPet:FindFirstChild("Animations") then
-        local idleAnim = newPet.Animations:FindFirstChild("Idle")
-        if idleAnim then
-            local animator = Instance.new("Animator")
-            animator.Parent = newPet.Humanoid
-            local anim = Instance.new("Animation")
-            anim.AnimationId = idleAnim.AnimationId
-            animator:LoadAnimation(anim):Play()
-        end
-    end
-
-    print("✅ Fake hatch complete: Zen Egg -> Kitsune")
 end
 
-button.MouseButton1Click:Connect(fakeHatch)
+-- Find and enlarge YOUR pets only
+local function enlargeMyPets()
+    for _, model in ipairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") and model:FindFirstChild("Owner") then
+            local owner = model:FindFirstChild("Owner")
+            if owner:IsA("StringValue") and owner.Value == player.Name then
+                scaleModel(model)
+            end
+        end
+    end
+end
+
+-- UI creation
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 100)
+Frame.Position = UDim2.new(0.4, 0, 0.4, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.Parent = ScreenGui
+Frame.Name = "HugePetUI"
+
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(1, 0, 1, 0)
+Button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+Button.Text = "Enlarge"
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.Font = Enum.Font.GothamBold
+Button.TextScaled = true
+Button.Parent = Frame
+
+Button.MouseButton1Click:Connect(function()
+    enlargeMyPets()
+end)
