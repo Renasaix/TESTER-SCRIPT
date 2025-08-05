@@ -3,64 +3,52 @@
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
+local SCALE = 3
 
-local SCALE = 4 -- how much bigger
-local scaledPets = {} -- to prevent re-scaling same pets
+-- Keeps track of already-enlarged pets
+local enlargedPets = {}
 
--- Helper: Scales all parts in a model
-local function scaleModel(model)
-    if scaledPets[model] then return end
-    scaledPets[model] = true
+-- Proper enlargement function
+local function enlargeModel(model)
+	if enlargedPets[model] then return end
+	enlargedPets[model] = true
 
-    for _, obj in ipairs(model:GetDescendants()) do
-        -- Resize BaseParts
-        if obj:IsA("BasePart") then
-            obj.Size *= SCALE
-            obj.CFrame = obj.CFrame * CFrame.new(0, obj.Size.Y / (2 * SCALE), 0)
-        end
-        -- Resize SpecialMeshes
-        if obj:IsA("SpecialMesh") then
-            obj.Scale *= SCALE
-        end
-        -- Resize MeshParts
-        if obj:IsA("MeshPart") then
-            obj.Size *= SCALE
-        end
-    end
+	for _, descendant in pairs(model:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			-- Resize base parts
+			descendant.Size = descendant.Size * SCALE
+
+			-- Optional: move slightly to avoid clipping
+			descendant.CFrame = descendant.CFrame + Vector3.new(0, 0.5 * SCALE, 0)
+
+		elseif descendant:IsA("MeshPart") then
+			descendant.Size = descendant.Size * SCALE
+
+		elseif descendant:IsA("SpecialMesh") then
+			descendant.Scale = descendant.Scale * SCALE
+		end
+	end
 end
 
--- Find and enlarge YOUR pets only
+-- Enlarge ALL pets owned by you
 local function enlargeMyPets()
-    for _, model in ipairs(Workspace:GetDescendants()) do
-        if model:IsA("Model") and model:FindFirstChild("Owner") then
-            local owner = model:FindFirstChild("Owner")
-            if owner:IsA("StringValue") and owner.Value == player.Name then
-                scaleModel(model)
-            end
-        end
-    end
+	for _, model in pairs(Workspace:GetDescendants()) do
+		if model:IsA("Model") and model:FindFirstChild("Owner") then
+			local ownerTag = model:FindFirstChild("Owner")
+			if ownerTag:IsA("StringValue") and ownerTag.Value == player.Name then
+				enlargeModel(model)
+			end
+		end
+	end
 end
 
--- UI creation
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+-- GUI Creation
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "PetEnlarger"
 
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 100)
-Frame.Position = UDim2.new(0.4, 0, 0.4, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Frame.Parent = ScreenGui
-Frame.Name = "HugePetUI"
+local frame = Instance.new("Frame", gui)
+frame.Position = UDim2.new(0.4, 0, 0.4, 0)
+frame.Size = UDim2.new(0, 200, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 
-local Button = Instance.new("TextButton")
-Button.Size = UDim2.new(1, 0, 1, 0)
-Button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-Button.Text = "Enlarge"
-Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button.Font = Enum.Font.GothamBold
-Button.TextScaled = true
-Button.Parent = Frame
-
-Button.MouseButton1Click:Connect(function()
-    enlargeMyPets()
-end)
+local button = Instance.new("TextButt
