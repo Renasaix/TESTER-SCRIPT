@@ -51,4 +51,13 @@ frame.Position = UDim2.new(0.4, 0, 0.4, 0)
 frame.Size = UDim2.new(0, 200, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 
-local button = Instance.new("TextButt
+local button = Instance.new("TextButton", frame)
+button.Size = UDim2.new(1, 0, 1, 0)
+button.Text = "Enlarge"
+button.TextScaled = true
+button.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+button.Font = Enum.Font.GothamBold
+button.TextColor3 = Color3.new(1, 1, 1)
+
+-- Hook the button
+button.MouseButton1Click:Connect(enlargeMyPets)
