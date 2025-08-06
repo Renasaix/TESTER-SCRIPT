@@ -10,7 +10,6 @@ local realHatchTimes = {
     ["Rare Summer Egg"] = 14400,
     ["Paradise Egg"] = 24000,
     ["Bug Egg"] = 28800,
-
     ["Bee Egg"] = 15000,
     ["Anti‑Bee Egg"] = 15000,
     ["Zen Egg"] = 15000,
